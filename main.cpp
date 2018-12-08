@@ -1,207 +1,81 @@
-
 #include <iostream>
-#include <string>
-#include <sstream>
+#include <fstream>
 #include <vector>
 #include <algorithm>
-#include <getopt.h>
-
-
+#include "opencv2/highgui/highgui.hpp"
+#include "opencv2/imgproc/imgproc.hpp"
 using namespace std;
 
-void printer(const std::vector<int> & arr);
-
-static struct option long_options[] =
+class RandNumber
 {
-    {"method",required_argument, NULL, 'm'}
+public:
+    RandNumber()
+    {
+        srand(time(0));
+    }
+    double get(int begin=0, int end = 1)
+    {
+        return (double)rand()/RAND_MAX * (end-begin) + begin;
+    }
 };
 
-void swap(std::vector<int> &arr, const int& i, const int& j)
-{
-    int temp = arr[i];
-    arr[i] = arr[j];
-    arr[j] = temp;
-}
 
-void heapInsert(std::vector<int> & arr, int index)
-{
-    while(arr[index]>arr[(index-1)/2])
-    {
-        swap(arr,index,(index-1)/2);
-        index =(index-1)/2;
-    }
-}
 
-void heapify(std::vector<int> & arr, int index, int size)
+class LeastSquare
 {
-    int left = index*2 +1;
-    while(left<size)
+    double a,b;
+public:
+    LeastSquare(const vector<double> &x, const vector<double> & y)
     {
-        int largest = left+1<size && arr[left+1] > arr[left] ? left+1:left;
-        largest = arr[largest] > arr[index] ? largest:index;
-        if(largest == index)
+        double t1=0, t2=0, t3=0, t4=0;
+        for(int i=0; i<x.size(); ++i)
         {
-            break;
+            t1+=x[i]*x[i];
+            t2 +=x[i];
+            t3 += x[i]*y[i];
+            t4 += y[i];
         }
-
-        swap(arr,largest,index);
-        index = largest;
-        left = index*2+1;
+        a = (t3*x.size() - t2*t4)/(t1*x.size()-t2*t2);
+        b = (t1*t4-t2*t3)/(t1*x.size()-t2*t2);
     }
-}
-
-void heapSort(std::vector<int> &arr)
-{
-    if(arr.empty() || arr.size()<2)
-        return ;
-    for(int i=0; i<arr.size(); i++)
+    double getY(const double x) const
     {
-        heapInsert(arr, i);
+        return a*x +b;
     }
-
-    int size = arr.size();
-    swap(arr,0,--size);
-    while(size>0)
+    void print() const
     {
-        heapify(arr,0,size);
-        swap(arr,0,--size);
+        cout << "y = "<< a << "x + "<<b<<"\n";
     }
-}
+};
 
 
-void selectionSort(std::vector<int> & arr)
+int main()
 {
-    std::cout << "The result of selectionSort method"<< std::endl;
-    if(arr.empty()||arr.size()<2)
-    {
-        return ;
-    }
-
-    for(int i=0; i<arr.size()-1; i++)
-    {
-        int minIndex = i;
-        for(int j=i+1; j<arr.size(); ++j)
-        {
-            minIndex = arr[j] < arr[minIndex]?j:minIndex;
-        }
-        swap(arr,i, minIndex);
-    }
-}
-
-void bubbleSort(std::vector<int>&  arr)
-{
-    std::cout << "The result of bubbleSort method"<< std::endl;
-    if(arr.empty() || arr.size()<2)
-        return;
-
-    for(int e = arr.size()-1;e>0; e--)
-    {
-        for(int i=0; i<e; i++)
-        {
-            if(arr[i] > arr[i+1])
-            {
-                swap(arr, i, i+1);
-            }
-        }
-    }
-}
-
-void printer(const std::vector<int> & arr)
-{
-    for_each(arr.begin(),arr.end(),[](const int& val)->void{cout << val << " ";});
-    std::cout << endl;
-    std::cout << "*********************" << std::endl;
-}
-
-void system_sort(std::vector<int> &arr)
-{
-    std::sort(arr.begin(),arr.end(),[](int a, int b) {return a < b;}); // small to big
-}
-
-bool isEqual(const std::vector<int> vec1, const std::vector<int> vec2)
-{
-    if(vec1.size()!= vec2.size())
-        return false;
-
-    for(int index = 0; index < vec1.size(); ++index)
-    {
-        if(vec1[index] != vec2[index])
-            return false;
-    }
-
-    return true;
-}
-
-int main(int argc,char *argv[])
-{
-    std::vector<int> vec;
+    std::vector<double> x;
+    std::vector<double> y;
+    double beta_1 =1, beta_2 = 2;
     srand(time(0));
-    std::cout << "Generate a random array" << std::endl;
-    for(int index = 0; index < 20; ++index)
+    RandNumber r;
+    std::cout << "Generate a random array x and y" << std::endl;
+    for(int index = 0; index < 200; ++index)
     {
-        vec.emplace_back(rand()%100);
-    }
-    printer(vec);
-
-
-    std::vector<int> vec1, vec2;
-    vec1.resize(vec.size());
-    vec1.assign(vec.begin(),vec.end());
-    vec2.resize(vec.size());
-    vec2.assign(vec.begin(),vec.end());
-
-    std::cout << "Utilize system provided method to sort the array"<< std::endl;
-    system_sort(vec1);
-    printer(vec1);
-
-    int option=getopt_long(argc,argv,"m:",long_options, 0);
-    if(-1 == option)
-    {
-        std::cerr << "parser parameter error!"<< std::endl;
+        x.emplace_back(r.get(0,100));
+        y.emplace_back(beta_2+x.back()*beta_1+r.get(-1,1));
     }
 
-    switch(option)
-    {
-    case 'm':
-    {
-        stringstream arg;
-        std::string m_arg;
-        arg<<optarg;
-        arg>>m_arg;
+    LeastSquare ls(x,y);
+    ls.print();
 
-        if(m_arg=="bubbleSort")
-        {
-            bubbleSort(vec2);
-            printer(vec2);
-        }
-        else if(m_arg=="selectionSort")
-        {
-            selectionSort(vec2);
-            printer(vec2);
-        }
-        else if(m_arg =="heapSort")
-        {
-            heapSort(vec2);
-            printer(vec2);
-        }
-        else
-        {
-            std::cerr<<"This program does not contain this sort method" << std::endl;
-            return -1;
-        }
-    }
-        break;
-    default:
-        {
-            std::cerr<<"This program can't parse this option" << std::endl;
-            return -1;
-        }
-        break;
+    cv::Mat M(400,400,CV_8UC3,cv::Scalar(255,255,255));
+    for(size_t index =0; index <x.size(); ++index)
+    {
+        cv::circle(M,cv::Point(10*x[index],10*y[index]),2,cv::Scalar(0,0,0));
     }
 
 
-    std::cout << (isEqual(vec1,vec2) ? "NICE" : "FUCKED!") << std::endl;
+    cv::imshow("test",M);
+
+    cv::waitKey();
 
     return 0;
 }
-
